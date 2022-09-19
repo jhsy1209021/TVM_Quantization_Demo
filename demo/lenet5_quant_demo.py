@@ -77,7 +77,6 @@ with open("lib.log", 'w') as f:
 #                                                               #
 #################################################################
 #Quantize the lenet5Keras model by tensoflow api
-"""
 import tensorflow as tf
 def representative_dataset():
     for _ in range(100):
@@ -116,4 +115,3 @@ mod, params = relay.frontend.from_tflite(
 with open("Lenet_pre_quant.log",'w') as f:
     k_relay = mod.astext(show_meta_data = False)
     f.write(k_relay)
-"""
