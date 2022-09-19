@@ -1,0 +1,73 @@
+#[version = "0.0.5"]
+def @dequantize_outputs(%input: Tensor[(1, 10), int16] /* ty=Tensor[(1, 10), int16] */) -> Tensor[(1, 10), float32] {
+  %0 = cast(%input, dtype="float32") /* ty=Tensor[(1, 10), float32] */;
+  %1 = multiply(%0, 0.000244141f /* ty=float32 */) /* ty=Tensor[(1, 10), float32] */;
+  %2 = nn.bias_add(%1, meta[relay.Constant][0] /* ty=Tensor[(10), float32] */) /* ty=Tensor[(1, 10), float32] */;
+  nn.softmax(%2, axis=1) /* ty=Tensor[(1, 10), float32] */
+}
+
+def @main(%conv2d_1_input: Tensor[(1, 1, 28, 28), float32] /* ty=Tensor[(1, 1, 28, 28), float32] */) -> Tensor[(1, 10), float32] {
+  let %quantized_inputs: (Tensor[(1, 1, 28, 28), int8],) /* ty=(Tensor[(1, 1, 28, 28), int8],) */ = @quantize_inputs(%conv2d_1_input) /* ty=(Tensor[(1, 1, 28, 28), int8],) */;
+  %3 = %quantized_inputs.0 /* ty=Tensor[(1, 1, 28, 28), int8] */;
+  let %quantized_outputs: Tensor[(1, 10), int16] /* ty=Tensor[(1, 10), int16] */ = @quantized_main(%3) /* ty=Tensor[(1, 10), int16] */;
+  let %dequantized_outputs: Tensor[(1, 10), float32] /* ty=Tensor[(1, 10), float32] */ = @dequantize_outputs(%quantized_outputs) /* ty=Tensor[(1, 10), float32] */;
+  %dequantized_outputs
+}
+
+def @quantize_inputs(%conv2d_1_input1: Tensor[(1, 1, 28, 28), float32] /* ty=Tensor[(1, 1, 28, 28), float32] */) -> (Tensor[(1, 1, 28, 28), int8],) {
+  %4 = multiply(%conv2d_1_input1, 16f /* ty=float32 */) /* ty=Tensor[(1, 1, 28, 28), float32] */;
+  %5 = round(%4) /* ty=Tensor[(1, 1, 28, 28), float32] */;
+  %6 = clip(%5, a_min=-127f, a_max=127f) /* ty=Tensor[(1, 1, 28, 28), float32] */;
+  let %conv2d_1_input2: Tensor[(1, 1, 28, 28), int8] /* ty=Tensor[(1, 1, 28, 28), int8] */ = cast(%6, dtype="int8") /* ty=Tensor[(1, 1, 28, 28), int8] */;
+  (%conv2d_1_input2,) /* ty=(Tensor[(1, 1, 28, 28), int8],) */
+}
+
+def @quantized_main(%conv2d_1_input3: Tensor[(1, 1, 28, 28), int8] /* ty=Tensor[(1, 1, 28, 28), int8] */) -> Tensor[(1, 10), int16] {
+  %7 = nn.conv2d(%conv2d_1_input3, meta[relay.Constant][1] /* ty=Tensor[(6, 1, 3, 3), int8] */, padding=[1i64, 1i64, 1i64, 1i64], channels=6, kernel_size=[3, 3], out_dtype="int16") /* ty=Tensor[(1, 6, 28, 28), int16] */;
+  %8 = add(%7, 64i16 /* ty=int16 */) /* ty=Tensor[(1, 6, 28, 28), int16] */;
+  %9 = right_shift(%8, 7i16 /* ty=int16 */) /* ty=Tensor[(1, 6, 28, 28), int16] */;
+  %10 = clip(%9, a_min=-127f, a_max=127f) /* ty=Tensor[(1, 6, 28, 28), int16] */;
+  %11 = cast(%10, dtype="int8") /* ty=Tensor[(1, 6, 28, 28), int8] */;
+  %12 = annotation.stop_fusion(%11) /* ty=Tensor[(1, 6, 28, 28), int8] */;
+  %13 = cast(%12, dtype="float32") /* ty=Tensor[(1, 6, 28, 28), float32] */;
+  %14 = multiply(%13, 0.0625f /* ty=float32 */) /* ty=Tensor[(1, 6, 28, 28), float32] */;
+  %15 = nn.bias_add(%14, meta[relay.Constant][2] /* ty=Tensor[(6), float32] */) /* ty=Tensor[(1, 6, 28, 28), float32] */;
+  %16 = nn.relu(%15) /* ty=Tensor[(1, 6, 28, 28), float32] */;
+  %17 = nn.avg_pool2d(%16, pool_size=[2, 2], strides=[2, 2], padding=[0, 0, 0, 0]) /* ty=Tensor[(1, 6, 14, 14), float32] */;
+  %18 = multiply(%17, 16f /* ty=float32 */) /* ty=Tensor[(1, 6, 14, 14), float32] */;
+  %19 = round(%18) /* ty=Tensor[(1, 6, 14, 14), float32] */;
+  %20 = clip(%19, a_min=-127f, a_max=127f) /* ty=Tensor[(1, 6, 14, 14), float32] */;
+  %21 = cast(%20, dtype="int8") /* ty=Tensor[(1, 6, 14, 14), int8] */;
+  %22 = nn.conv2d(%21, meta[relay.Constant][3] /* ty=Tensor[(16, 6, 3, 3), int8] */, padding=[1i64, 1i64, 1i64, 1i64], channels=16, kernel_size=[3, 3], out_dtype="int16") /* ty=Tensor[(1, 16, 14, 14), int16] */;
+  %23 = add(%22, 64i16 /* ty=int16 */) /* ty=Tensor[(1, 16, 14, 14), int16] */;
+  %24 = right_shift(%23, 7i16 /* ty=int16 */) /* ty=Tensor[(1, 16, 14, 14), int16] */;
+  %25 = clip(%24, a_min=-127f, a_max=127f) /* ty=Tensor[(1, 16, 14, 14), int16] */;
+  %26 = cast(%25, dtype="int8") /* ty=Tensor[(1, 16, 14, 14), int8] */;
+  %27 = annotation.stop_fusion(%26) /* ty=Tensor[(1, 16, 14, 14), int8] */;
+  %28 = cast(%27, dtype="float32") /* ty=Tensor[(1, 16, 14, 14), float32] */;
+  %29 = multiply(%28, 0.0625f /* ty=float32 */) /* ty=Tensor[(1, 16, 14, 14), float32] */;
+  %30 = nn.bias_add(%29, meta[relay.Constant][4] /* ty=Tensor[(16), float32] */) /* ty=Tensor[(1, 16, 14, 14), float32] */;
+  %31 = nn.relu(%30) /* ty=Tensor[(1, 16, 14, 14), float32] */;
+  %32 = nn.avg_pool2d(%31, pool_size=[2, 2], strides=[2, 2], padding=[0, 0, 0, 0]) /* ty=Tensor[(1, 16, 7, 7), float32] */;
+  %33 = transpose(%32, axes=[0, 2, 3, 1]) /* ty=Tensor[(1, 7, 7, 16), float32] */;
+  %34 = nn.batch_flatten(%33) /* ty=Tensor[(1, 784), float32] */;
+  %35 = multiply(%34, 16f /* ty=float32 */) /* ty=Tensor[(1, 784), float32] */;
+  %36 = round(%35) /* ty=Tensor[(1, 784), float32] */;
+  %37 = clip(%36, a_min=-127f, a_max=127f) /* ty=Tensor[(1, 784), float32] */;
+  %38 = cast(%37, dtype="int8") /* ty=Tensor[(1, 784), int8] */;
+  %39 = nn.dense(%38, meta[relay.Constant][5] /* ty=Tensor[(84, 784), int8] */, units=84, out_dtype="int16") /* ty=Tensor[(1, 84), int16] */;
+  %40 = cast(%39, dtype="float32") /* ty=Tensor[(1, 84), float32] */;
+  %41 = multiply(%40, 0.00012207f /* ty=float32 */) /* ty=Tensor[(1, 84), float32] */;
+  %42 = nn.bias_add(%41, meta[relay.Constant][6] /* ty=Tensor[(84), float32] */) /* ty=Tensor[(1, 84), float32] */;
+  %43 = nn.relu(%42) /* ty=Tensor[(1, 84), float32] */;
+  %44 = multiply(%43, 16f /* ty=float32 */) /* ty=Tensor[(1, 84), float32] */;
+  %45 = round(%44) /* ty=Tensor[(1, 84), float32] */;
+  %46 = clip(%45, a_min=-127f, a_max=127f) /* ty=Tensor[(1, 84), float32] */;
+  %47 = cast(%46, dtype="int8") /* ty=Tensor[(1, 84), int8] */;
+  nn.dense(%47, meta[relay.Constant][7] /* ty=Tensor[(10, 84), int8] */, units=10, out_dtype="int16") /* ty=Tensor[(1, 10), int16] */
+}
+
+/* For debugging purposes the metadata section has been omitted.
+ * If you would like to see the full metadata section you can set the 
+ * option to `True` when invoking `astext`. 
+ */

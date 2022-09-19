@@ -1,0 +1,35 @@
+#[version = "0.0.5"]
+def @main(%serving_default_conv2d_1_input:0: Tensor[(1, 28, 28, 1), int32], %v_param_1: Tensor[(3, 3, 1, 6), int8], %v_param_2: Tensor[(6), int32], %v_param_3: Tensor[(3, 3, 6, 16), int8], %v_param_4: Tensor[(16), int32], %v_param_5: Tensor[(84, 784), int8], %v_param_6: Tensor[(84), int32], %v_param_7: Tensor[(10, 84), int8], %v_param_8: Tensor[(10), int32], output_tensor_names=["StatefulPartitionedCall_0"]) {
+  %0 = qnn.conv2d(%serving_default_conv2d_1_input:0, %v_param_1, -128, 0, 0.00392157f, meta[relay.Constant][0], padding=[1, 1, 1, 1], channels=6, kernel_size=[3, 3], data_layout="NHWC", kernel_layout="HWIO", out_dtype="int32");
+  %1 = nn.bias_add(%0, %v_param_2, axis=3);
+  %2 = qnn.requantize(%1, meta[relay.Constant][1], 0, 0.0248659f, -128, axis=3, out_dtype="int8");
+  %3 = clip(%2, a_min=-128f, a_max=127f);
+  %4 = cast(%3, dtype="int32");
+  %5 = nn.avg_pool2d(%4, pool_size=[2, 2], strides=[2, 2], padding=[0, 0, 0, 0], layout="NHWC");
+  %6 = cast(%5, dtype="int8");
+  %7 = qnn.conv2d(%6, %v_param_3, -128, 0, 0.0248659f, meta[relay.Constant][2], padding=[1, 1, 1, 1], channels=16, kernel_size=[3, 3], data_layout="NHWC", kernel_layout="HWIO", out_dtype="int32");
+  %8 = nn.bias_add(%7, %v_param_4, axis=3);
+  %9 = qnn.requantize(%8, meta[relay.Constant][3], 0, 0.0786057f, -128, axis=3, out_dtype="int8");
+  %10 = clip(%9, a_min=-128f, a_max=127f);
+  %11 = cast(%10, dtype="int32");
+  %12 = nn.avg_pool2d(%11, pool_size=[2, 2], strides=[2, 2], padding=[0, 0, 0, 0], layout="NHWC");
+  %13 = cast(%12, dtype="int8");
+  %14 = reshape(%13, newshape=[-1, 784]);
+  %15 = reshape(%14, newshape=[-1, 784]);
+  %16 = qnn.dense(%15, %v_param_5, -128, 0, 0.0786057f, 0.00165768f, units=84, out_dtype="int32");
+  %17 = nn.bias_add(%16, %v_param_6);
+  %18 = qnn.requantize(%17, 0.000130303f, 0, 0.108512f, -128, out_dtype="int8");
+  %19 = clip(%18, a_min=-128f, a_max=127f);
+  %20 = reshape(%19, newshape=[-1, 84]);
+  %21 = qnn.dense(%20, %v_param_7, -128, 0, 0.108512f, 0.00318357f, units=10, out_dtype="int32");
+  %22 = nn.bias_add(%21, %v_param_8);
+  %23 = qnn.requantize(%22, 0.000345456f, 0, 0.161507f, 23, out_dtype="int8");
+  %24 = qnn.dequantize(%23, 0.161507f, 23);
+  %25 = nn.softmax(%24);
+  qnn.quantize(%25, 0.00390625f, -128, out_dtype="int8")
+}
+
+/* For debugging purposes the metadata section has been omitted.
+ * If you would like to see the full metadata section you can set the 
+ * option to `True` when invoking `astext`. 
+ */
