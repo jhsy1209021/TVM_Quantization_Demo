@@ -65,10 +65,10 @@ if QUANTIZATION == "tvm_quant":
 #Compile the model
 target = "c"
 with relay.build_config(opt_level=0):
-    graph, lib, param = relay.build(mod, target="llvm", target_host="llvm", params=params)
+    graph, lib, param = relay.build(mod, target, params=params)
 
-with open("lib.log", 'w') as f:
-    f.write(lib.get_source())
+#with open("lib.log", 'w') as f:
+#    f.write(lib.get_source())
 
 
 #################################################################
