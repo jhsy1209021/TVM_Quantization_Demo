@@ -1,4 +1,5 @@
 import os
+from re import S
 import tvm
 from tvm import te
 import tvm.relay as relay
@@ -20,8 +21,7 @@ from tvm.contrib.relay_viz.terminal import (
     TermVizParser,
 )
 
-#Choose the quantize mode -> 1)"tvm_quant" 2)"prequant"
-QUANTIZATION="tvm_quant"
+
 #Load Lenet5 Model
 def load_mod():
     MODEL_PATH  = "../model/lenet5/lenet5_model.h5"
@@ -45,21 +45,21 @@ with open("Lenet_Relay_origin.log",'w') as f:
     k_relay = mod.astext(show_meta_data = False)
     f.write(k_relay)
 
-if QUANTIZATION == "tvm_quant":
-    with relay.quantize.qconfig(    calibrate_mode="global_scale",
-                                    global_scale=8.0,
-                                    nbit_activation=16,
-                                    dtype_activation="int16",
-                                    skip_conv_layers=[],
-                                    skip_dense_layer=False,
-                                    partition_conversions="enabled"):
-        mod = relay.quantize.quantize(mod, params)
-        #viz = relay_viz.RelayVisualizer(mod)
-        #viz.render()
-        # Relay graph after quantization
-        with open("Lenet_Relay_tvm_quant.log",'w') as f:
-            k_relay = mod.astext(show_meta_data = False)
-            f.write(k_relay)
+
+with relay.quantize.qconfig(    calibrate_mode="global_scale",
+                                global_scale=8.0,
+                                nbit_activation=16,
+                                dtype_activation="int16",
+                                skip_conv_layers=[],
+                                skip_dense_layer=False,
+                                partition_conversions="enabled"):
+    mod = relay.quantize.quantize(mod, params)
+    #viz = relay_viz.RelayVisualizer(mod)
+    #viz.render()
+    # Relay graph after quantization
+    with open("Lenet_Relay_tvm_quant.log",'w') as f:
+        k_relay = mod.astext(show_meta_data = False)
+        f.write(k_relay)
 
 
 #Compile the model
