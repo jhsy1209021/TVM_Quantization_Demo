@@ -1,3 +1,4 @@
+from sympy import false
 import tensorflow_model_optimization as tfmot
 import tensorflow as tf
 import keras
@@ -43,27 +44,25 @@ annotated_model = tf.keras.models.clone_model(
     keras_lenet5,
     clone_function=apply_quantization_to_dense,
 )
-annotated_model.load_weights(WEIGHT_PATH)
 
 quant_aware_model = tfmot.quantization.keras.quantize_apply(annotated_model)
 quant_aware_model.summary()
-#quant_aware_model.save('./layerbylayer_quant.h5')
+#Train after QAT
+train_images_subset = x_train[0:1000] # out of 60000
+train_labels_subset = y_train[0:1000]
+
+quant_aware_model.compile(optimizer='adam',
+              loss='categorical_crossentropy',
+              metrics=['accuracy'])
+
+quant_aware_model.fit(train_images_subset, train_labels_subset,
+                  batch_size=500, epochs=1, validation_split=0.1)
 
 #get full quatize model by tensorflow lite converter
 def representative_dataset():
     for _ in range(100):
       data = np.random.rand(1, 28, 28, 1)
       yield [data.astype(np.float32)]
-
-"""
-converter = tf.lite.TFLiteConverter.from_keras_model(keras_lenet5)
-converter.optimizations = [tf.lite.Optimize.DEFAULT]
-converter.representative_dataset = representative_dataset
-converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8]
-converter.inference_input_type = tf.int8
-converter.inference_output_type = tf.int8
-lenet5_prequant = converter.convert()
-"""
 
 converter = tf.lite.TFLiteConverter.from_keras_model(quant_aware_model)
 converter.optimizations = [tf.lite.Optimize.DEFAULT]
@@ -81,8 +80,8 @@ with relay.quantize.qconfig(    calibrate_mode="global_scale",
                                 global_scale=8.0,
                                 nbit_activation=16,
                                 dtype_activation="int16",
-                                skip_conv_layers=[],
-                                skip_dense_layer=True,
+                                skip_conv_layers=[0, 1],
+                                skip_dense_layer=False,
                                 partition_conversions="disabled"):
     mod = relay.quantize.quantize(mod, params)
     #viz = relay_viz.RelayVisualizer(mod)
